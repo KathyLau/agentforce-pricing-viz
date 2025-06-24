@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Salesforce Agentforce Pricing Comparison</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; color: #333; line-height: 1.6; }
+        h1, h2, h3 { color: #005A9C; } /* Salesforce blue */
+        .section-header { margin-top: 40px; margin-bottom: 20px; border-bottom: 2px solid #0070D2; padding-bottom: 10px; }
+        .controls { margin-bottom: 30px; padding: 20px; border: 1px solid #ccc; border-radius: 8px; background-color: #f9f9f9; }
+        .control-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input[type="range"] { width: 100%; }
+        #chartContainer { width: 90%; margin: 30px auto; }
+        .pricing-summary { margin-top: 20px; border-top: 1px solid #eee; padding-top: 20px; }
+        .pricing-summary div { margin-bottom: 10px; }
+        .cost { font-weight: bold; color: #0070D2; }
+        .breakeven-info { margin-top: 20px; padding: 15px; background-color: #f0f8ff; border-radius: 5px; border: 1px solid #c9e6ff; }
+
+        /* Infographic Styling */
+        .infographic-section { margin-bottom: 30px; padding: 0px; background-color: #fff; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .infographic-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin-top: 20px; }
+        .infographic-item { padding: 15px; border: 1px solid #e0e0e0; border-radius: 5px; background-color: #fcfcfc; }
+        .infographic-item h3 { margin-top: 0; color: #0070D2; font-size: 1.2em; }
+        .infographic-item .value { font-size: 1.8em; font-weight: bold; color: #E85B24; margin-bottom: 5px; } /* Orange for key numbers */
+        .infographic-item .description { font-size: 0.9em; color: #666; margin-top: -5px; margin-bottom: 10px;}
+        .infographic-item ul { list-style-type: disc; margin-left: 20px; padding-left: 0; }
+        .infographic-item ul li { margin-bottom: 5px; }
+
+        /* Key Insights Specifics */
+        .insights-list { display: flex; flex-wrap: wrap; gap: 20px; margin-top: 20px; }
+        .insights-list .insight-box { flex: 1; min-width: 300px; padding: 20px; border: 1px solid #dcdcdc; border-radius: 8px; background-color: #ffffff; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+        .insights-list .insight-box h3 { color: #0070D2; margin-top: 0; }
+        .insights-list .insight-box ul { list-style-type: circle; margin-left: 20px; padding-left: 0; }
+        .insights-list .insight-box ul li { margin-bottom: 8px; }
+
+        /* Actions Per Topic Impact Specifics */
+        .action-impact-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; text-align: center; margin-top: 20px; }
+        .action-impact-item { padding: 10px; border: 1px solid #e0e0e0; border-radius: 5px; background-color: #fcfcfc; }
+        .action-impact-item .actions { font-size: 1.6em; font-weight: bold; color: #E85B24; margin-bottom: 5px; }
+        .action-impact-item .cost-vs-legacy { font-size: 0.9em; color: #666; }
+        .impact-note { text-align: center; margin-top: 20px; font-weight: bold; color: #444;}
+
+    </style>
+</head>
+<body>
+    <h1>Salesforce Agentforce Pricing Comparison</h1>
+
+    <div class="controls">
+        <div class="control-group">
+            <label for="numUsers">Number of Users: <span id="usersValue">10</span></label>
+            <input type="range" id="numUsers" min="1" max="500" value="10">
+        </div>
+
+        <div class="control-group">
+            <label for="topicVolume">Volume of Agent Topics per Month: <span id="topicVolumeValue">1000</span></label>
+            <input type="range" id="topicVolume" min="0" max="100000" value="1000" step="100">
+        </div>
+
+        <div class="control-group">
+            <label for="avgActionsPerTopic">Average Actions Per Topic: <span id="actionsValue">10</span></label>
+            <input type="range" id="avgActionsPerTopic" min="1" max="50" value="10">
+        </div>
+    </div>
+
+    <div class="infographic-section">
+        <h2 class="section-header">Cost Per Topic Comparison - Overview</h2>
+        <p>A quick look at how the cost per topic can vary across the different pricing models based on your selected parameters:</p>
+
+        <div class="infographic-grid">
+            <div class="infographic-item">
+                <div class="value" id="dynamicFlexCostPerTopic">$0.40</div>
+                <h3>Flex Credits per topic</h3>
+                <div class="description">(<span id="flexActionsCount">4</span> actions × $0.10)</div>
+            </div>
+            <div class="infographic-item">
+                <div class="value">$2.00</div>
+                <h3>Legacy per topic</h3>
+                <div class="description">(Fixed rate)</div>
+            </div>
+            <div class="infographic-item">
+                <div class="value" id="dynamicAgentforce1CostPerTopic">$1.10</div>
+                <h3>Agentforce 1 Edition per topic</h3>
+                <div class="description" id="dynamicAgentforce1Description">($<span id="af1MonthlyCost">11,000</span>/month ÷ <span id="af1ExampleTopics">10,000</span> topics)</div>
+            </div>
+        </div>
+
+    </div>
+
+    <div id="chartContainer">
+        <canvas id="pricingChart"></canvas>
+    </div>
+
+    <div class="pricing-summary">
+        <h2>Current Monthly Costs:</h2>
+        <div>Flex Credits: <span id="flexCost" class="cost"></span></div>
+        <div>Legacy Pricing: <span id="legacyCost" class="cost"></span></div>
+        <div>Agentforce 1 Edition: <span id="agentforce1Cost" class="cost"></span></div>
+    </div>
+
+    <div class="breakeven-info">
+        <h2>Breakeven Analysis:</h2>
+        <div id="breakevenDetails"></div>
+    </div>
+
+
+    <div class="infographic-section">
+        <h2 class="section-header">Key Insights: When to Use Each Model</h2>
+        <div class="insights-list">
+            <div class="insight-box">
+                <h3>When to Use Flex Credits:</h3>
+                <ul>
+                    <li>Topics typically use fewer than 20 actions.</li>
+                    <li>You have variable or unpredictable usage patterns.</li>
+                    <li>Your overall monthly volume of actions is lower.</li>
+                    <li>You prefer cost transparency based on exact usage.</li>
+                </ul>
+            </div>
+            <div class="insight-box">
+                <h3>When to Use Agentforce 1 Edition:</h3>
+                <ul>
+                    <li>You anticipate high volume usage (thousands of topics/month).</li>
+                    <li>You have predictable and consistent usage patterns.</li>
+                    <li>Your team needs unlimited access without worrying about action counts.</li>
+                    <li>You prioritize budget predictability with a fixed monthly cost per user.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+    <script>
+        // Pricing constants
+        const FLEX_CREDIT_COST_PER_ACTION = 0.10; // $0.10 per action
+        const LEGACY_COST_PER_TOPIC = 2.00; // $2.00 per conversation/topic
+        const AGENTFORCE_1_COST_PER_USER = 550; // $550 per user/month
+
+        // Fixed example topic volume for Agentforce 1 Edition's per-topic calculation in the infographic
+        const EXAMPLE_TOPICS_FOR_AF1_INFOGRAPHIC = 10000;
+
+        // Get DOM elements for sliders and current costs
+        const numUsersSlider = document.getElementById('numUsers');
+        const usersValueSpan = document.getElementById('usersValue');
+        const topicVolumeSlider = document.getElementById('topicVolume');
+        const topicVolumeValueSpan = document.getElementById('topicVolumeValue');
+        const avgActionsPerTopicSlider = document.getElementById('avgActionsPerTopic');
+        const actionsValueSpan = document.getElementById('actionsValue');
+
+        const flexCostSpan = document.getElementById('flexCost');
+        const legacyCostSpan = document.getElementById('legacyCost');
+        const agentforce1CostSpan = document.getElementById('agentforce1Cost');
+        const breakevenDetailsDiv = document.getElementById('breakevenDetails');
+
+        // Get DOM elements for dynamic infographics
+        const dynamicFlexCostPerTopicSpan = document.getElementById('dynamicFlexCostPerTopic');
+        const flexActionsCountSpan = document.getElementById('flexActionsCount');
+        const dynamicAgentforce1CostPerTopicSpan = document.getElementById('dynamicAgentforce1CostPerTopic');
+        const af1MonthlyCostSpan = document.getElementById('af1MonthlyCost');
+        const af1ExampleTopicsSpan = document.getElementById('af1ExampleTopics');
+
+
+        let myChart; // To hold the Chart.js instance
+
+        // Function to calculate costs
+        function calculateCosts(numUsers, totalTopics, avgActionsPerTopic) {
+            const flexCreditsCostPerTopic = avgActionsPerTopic * FLEX_CREDIT_COST_PER_ACTION;
+            const totalFlexCreditsCost = totalTopics * flexCreditsCostPerTopic;
+            const totalLegacyCost = totalTopics * LEGACY_COST_PER_TOPIC;
+            const totalAgentforce1Cost = numUsers * AGENTFORCE_1_COST_PER_USER;
+
+            return {
+                flexCredits: totalFlexCreditsCost,
+                legacy: totalLegacyCost,
+                agentforce1: totalAgentforce1Cost,
+                flexCreditsCostPerTopic: flexCreditsCostPerTopic,
+                totalAgentforce1Cost: totalAgentforce1Cost
+            };
+        }
+
+        // Function to update the chart and display costs/breakeven
+        function updateChart() {
+            const numUsers = parseInt(numUsersSlider.value);
+            const topicVolume = parseInt(topicVolumeSlider.value);
+            const avgActionsPerTopic = parseInt(avgActionsPerTopicSlider.value);
+
+            usersValueSpan.textContent = numUsers;
+            topicVolumeValueSpan.textContent = topicVolume;
+            actionsValueSpan.textContent = avgActionsPerTopic;
+
+            const costs = calculateCosts(numUsers, topicVolume, avgActionsPerTopic);
+
+            flexCostSpan.textContent = `$${costs.flexCredits.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+            legacyCostSpan.textContent = `$${costs.legacy.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+            agentforce1CostSpan.textContent = `$${costs.agentforce1.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+            // --- Update Dynamic Infographics ---
+            flexActionsCountSpan.textContent = avgActionsPerTopic;
+            dynamicFlexCostPerTopicSpan.textContent = `$${costs.flexCreditsCostPerTopic.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+            // For Agentforce 1 Edition infographic, calculate based on dynamic users but fixed example topics
+            const af1CostPerTopicInfographic = costs.totalAgentforce1Cost / EXAMPLE_TOPICS_FOR_AF1_INFOGRAPHIC;
+
+            af1MonthlyCostSpan.textContent = costs.totalAgentforce1Cost.toLocaleString();
+            af1ExampleTopicsSpan.textContent = EXAMPLE_TOPICS_FOR_AF1_INFOGRAPHIC.toLocaleString();
+            dynamicAgentforce1CostPerTopicSpan.textContent = `$${af1CostPerTopicInfographic.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+
+            // --- Chart Data Update ---
+            const labels = [];
+            const flexData = [];
+            const legacyData = [];
+            const agentforce1Data = [];
+
+            // Generate data points for the chart based on topic volume
+            const maxChartTopicVolume = Math.max(topicVolume * 2, 15000); // Extend the range for better visualization
+            const step = Math.ceil(maxChartTopicVolume / 100); // Max 100 data points
+
+            for (let i = 0; i <= maxChartTopicVolume; i += step) {
+                const currentTopicVolume = Math.round(i);
+                labels.push(currentTopicVolume);
+                const currentCosts = calculateCosts(numUsers, currentTopicVolume, avgActionsPerTopic);
+                flexData.push(currentCosts.flexCredits);
+                legacyData.push(currentCosts.legacy);
+                agentforce1Data.push(currentCosts.agentforce1);
+            }
+
+            if (myChart) {
+                myChart.data.labels = labels;
+                myChart.data.datasets[0].data = flexData;
+                myChart.data.datasets[1].data = legacyData;
+                myChart.data.datasets[2].data = agentforce1Data;
+                myChart.update();
+            } else {
+                const ctx = document.getElementById('pricingChart').getContext('2d');
+                myChart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [
+                            {
+                                label: 'Flex Credits',
+                                data: flexData,
+                                borderColor: 'rgb(75, 192, 192)',
+                                tension: 0.1,
+                                fill: false
+                            },
+                            {
+                                label: 'Legacy Pricing',
+                                data: legacyData,
+                                borderColor: 'rgb(255, 99, 132)',
+                                tension: 0.1,
+                                fill: false
+                            },
+                            {
+                                label: 'Agentforce 1 Edition',
+                                data: agentforce1Data,
+                                borderColor: 'rgb(255, 205, 86)',
+                                tension: 0.1,
+                                fill: false
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: 'Salesforce Agentforce Monthly Cost Comparison'
+                            },
+                            tooltip: {
+                                mode: 'index',
+                                intersect: false,
+                                callbacks: {
+                                    label: function(context) {
+                                        let label = context.dataset.label || '';
+                                        if (label) {
+                                            label += ': ';
+                                        }
+                                        label += `$${context.parsed.y.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                                        return label;
+                                    },
+                                    title: function(tooltipItems) {
+                                        return 'Volume of Agent Topics: ' + tooltipItems[0].label.toLocaleString();
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                title: {
+                                    display: true,
+                                    text: 'Volume of Agent Topics per Month'
+                                }
+                            },
+                            y: {
+                                title: {
+                                    display: true,
+                                    text: 'Total Monthly Cost ($)'
+                                },
+                                beginAtZero: true
+                            }
+                        }
+                    }
+                });
+            }
+
+            // --- Breakeven Analysis Display ---
+            let breakevenText = "";
+
+            // Flex vs Legacy
+            const actionsBreakevenFlexLegacy = LEGACY_COST_PER_TOPIC / FLEX_CREDIT_COST_PER_ACTION; // 2.00 / 0.10 = 20 actions
+            if (avgActionsPerTopic < actionsBreakevenFlexLegacy) {
+                breakevenText += `At your selected average of ${avgActionsPerTopic} actions per topic, Flex Credits ($${(avgActionsPerTopic * FLEX_CREDIT_COST_PER_ACTION).toFixed(2)}/topic) are more cost-effective than Legacy Pricing ($${LEGACY_COST_PER_TOPIC.toFixed(2)}/topic).<br>`;
+            } else if (avgActionsPerTopic > actionsBreakevenFlexLegacy) {
+                breakevenText += `At your selected average of ${avgActionsPerTopic} actions per topic, Legacy Pricing ($${LEGACY_COST_PER_TOPIC.toFixed(2)}/topic) is more cost-effective than Flex Credits ($${(avgActionsPerTopic * FLEX_CREDIT_COST_PER_ACTION).toFixed(2)}/topic).<br>`;
+            } else {
+                breakevenText += `At exactly ${actionsBreakevenFlexLegacy} actions per topic, Flex Credits and Legacy Pricing cost the same per topic ($${LEGACY_COST_PER_TOPIC.toFixed(2)}).<br>`;
+            }
+
+            // Breakeven with Agentforce 1 Edition
+            const flexCostPerTopic = avgActionsPerTopic * FLEX_CREDIT_COST_PER_ACTION;
+
+            if (flexCostPerTopic > 0) { // Avoid division by zero
+                const breakevenTopicsForFlex = (numUsers * AGENTFORCE_1_COST_PER_USER) / flexCostPerTopic;
+                breakevenText += `Agentforce 1 Edition becomes more cost-effective than Flex Credits if your monthly agent task volume exceeds approximately ${Math.round(breakevenTopicsForFlex).toLocaleString()} actions (for ${numUsers} users).<br>`;
+            } else {
+                 breakevenText += `Flex Credits cost is $0, so Agentforce 1 Edition will always be more expensive unless volume is 0.<br>`;
+            }
+
+            const breakevenTopicsForLegacy = (numUsers * AGENTFORCE_1_COST_PER_USER) / LEGACY_COST_PER_TOPIC;
+            breakevenText += `Agentforce 1 Edition becomes more cost-effective than Legacy Pricing if your monthly agent task volume exceeds approximately ${Math.round(breakevenTopicsForLegacy).toLocaleString()} actions (for ${numUsers} users).<br>`;
+            breakevenText += `Flex Credits are always cheaper than Legacy unless your topics consistently use 20 or more actions per topic.`
+            breakevenDetailsDiv.innerHTML = breakevenText;
+        }
+
+        // Event listeners for sliders
+        numUsersSlider.addEventListener('input', updateChart);
+        topicVolumeSlider.addEventListener('input', updateChart);
+        avgActionsPerTopicSlider.addEventListener('input', updateChart);
+
+        // Initial chart render
+        updateChart();
+    </script>
+</body>
+</html>
+```

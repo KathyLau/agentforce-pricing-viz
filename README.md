@@ -6,7 +6,7 @@
 
 This interactive web tool helps organizations compare and analyze the cost implications of different Salesforce Agentforce pricing models. It provides real-time calculations, visual comparisons, and breakeven analysis to help you make informed decisions about which pricing model best fits your organization's needs.
 
-Detailed Deck: https://view.salesforce.com/viewer/e2e92a3a2a4e7b17590f330089127563
+Detailed Deck: [https://view.salesforce.com/viewer/e2e92a3a2a4e7b17590f330089127563](https://view.salesforce.com/viewer/a32f6513e01d35e822ac29b2f73fd906/gate)
 
 ## What This Tool Shows
 
